@@ -17,6 +17,7 @@
 import csv
 import json
 from operator import itemgetter
+import os
 
 # 加载规则
 with open('rules.json', 'r', encoding='utf-8') as f:
@@ -25,9 +26,27 @@ with open('rules.json', 'r', encoding='utf-8') as f:
 data_file = rules['file']
 exclusion_rules = rules['exclusion_rules']
 sorting_rules = rules['sorting_rules']
-result_filename = f'{data_file.split(".")[0]}_result.csv'
-exclude_filename = f'{data_file.split(".")[0]}_exclude.csv'
 
+data_dir = "data"
+directory = "result"
+if not os.path.exists(directory):
+    os.makedirs(directory)
+result_filename = f'result\{data_file.split(".")[0]}_result.csv'
+simple_filename = f'result\{data_file.split(".")[0]}_simple.csv'
+exclude_filename = f'result\{data_file.split(".")[0]}_exclude.csv'
+
+
+# 文件预处理，去掉 bom头
+import codecs
+def convert_utf8_with_bom_to_utf8(file_path):
+    # 读取带BOM的UTF-8文件内容
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
+        content = file.read()
+
+    # 将内容写入不带BOM的UTF-8文件
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.write(content)
+convert_utf8_with_bom_to_utf8(os.path.join(data_dir, data_file))
 
 # 排除函数
 def exclude_row(row, rules):
@@ -48,7 +67,7 @@ def exclude_row(row, rules):
 
 
 # 读取CSV文件
-with open(data_file, 'r', encoding='utf-8') as csvfile:
+with open(os.path.join("data", data_file), 'r', encoding='utf-8') as csvfile:
     reader = csv.DictReader(csvfile)
     headers = reader.fieldnames
     data = []
@@ -92,6 +111,7 @@ with open(result_filename, 'w', newline='', encoding='utf-8') as result_file:
     writer = csv.DictWriter(result_file, fieldnames=result_headers)
     writer.writeheader()
     writer.writerows(data)
+    print("输出结果文件成功~")
 
 # # 将排除的数据写入到 exclude_filename
 exclude_headers = headers + ['排除原因字段', "排除原因值"]
@@ -102,3 +122,26 @@ with open(exclude_filename, 'w', newline='', encoding='utf-8') as exclude_file:
         row['排除原因字段'] = reasons[0][0]
         row['排除原因值'] = reasons[0][1]
         writer.writerow(row)
+    print("输出排除文件成功~")
+
+
+# 精简字段列表
+simple_fields = ['转债代码', '转债名称', '最新价', '正股名称', '转股价值',
+                   '转股溢价率', '转股溢价率_rank', '纯债溢价率', '纯债溢价率_rank',
+                   '剩余规模(亿)', '剩余规模(亿)_rank',
+                   '正股流通市值(亿)', '剩余年限', '强赎触发比例', 
+                   '外部评级', '二级行业', '赎回状态', 'score']
+with open(simple_filename, 'w', newline='', encoding='utf-8') as output_csv:
+    writer = csv.DictWriter(output_csv, fieldnames=simple_fields)
+    
+    # 写入表头
+    writer.writeheader()
+    
+    # 遍历输入文件的每一行
+    for row in data:
+        # 选择特定字段的值
+        selected_values = {field: row[field] for field in simple_fields}
+        
+        # 写入选择的字段值到输出文件
+        writer.writerow(selected_values)
+    print("输出精简文件成功~")

@@ -1,5 +1,5 @@
 {
-    "file": "lude_conv_bonds_20240402.csv",
+    "file": "lude_conv_bonds_20240403.csv",
     "exclusion_rules": [
         {
             "field": "正股名称",
